@@ -1,0 +1,245 @@
+{
+  "train_id": "t2026-03-12-french-priority",
+  "examples": [
+    {
+      "question_id": "q_fr_1",
+      "text": "Écrivez un message court sur votre journée.",
+      "type": "open",
+      "language": "fr",
+      "difficulty": 1,
+      "expected_keywords": ["aujourd'hui", "bien", "travail", "matin"],
+      "rubric": {
+        "level": "A1",
+        "expected_min_words": 25,
+        "expected_keywords": ["aujourd'hui", "bien", "travail"],
+        "criteria_weights": {
+          "task_realisation": 0.25,
+          "coherence": 0.20,
+          "sociolinguistic": 0.15,
+          "lexicon": 0.20,
+          "morphosyntax": 0.20
+        }
+      },
+      "examples_answers": [
+        {
+          "text": "Aujourd'hui j'ai travaillé toute la journée. C'était bien.",
+          "score": 0.65
+        },
+        {
+          "text": "Aujourd'hui le jour était bien. J'ai travaillé et c'est tres bon",
+          "score": 0.48
+        }
+      ]
+    },
+    {
+      "question_id": "q_fr_2",
+      "text": "Parlez de vos loisirs préférés et pourquoi vous les aimez.",
+      "type": "open",
+      "language": "fr",
+      "difficulty": 2,
+      "expected_keywords": ["loisir", "aimer", "parce que", "activité"],
+      "rubric": {
+        "level": "A2",
+        "expected_min_words": 50,
+        "expected_keywords": ["loisir", "aimer"],
+        "criteria_weights": {
+          "task_realisation": 0.25,
+          "coherence": 0.20,
+          "sociolinguistic": 0.15,
+          "lexicon": 0.20,
+          "morphosyntax": 0.20
+        }
+      },
+      "examples_answers": [
+        {
+          "text": "J'aime beaucoup la lecture. C'est mon loisir préféré parce que je peux apprendre de nouvelles choses. J'aime aussi le sport car c'est bon pour la santé.",
+          "score": 0.75
+        },
+        {
+          "text": "Les loisir que j'aimez sont le sport et la music. Je aime parce que c'est amusant et je peut faire avec mes amis.",
+          "score": 0.42
+        }
+      ]
+    },
+    {
+      "question_id": "q_fr_3",
+      "type": "mcq",
+      "text": "Quelle est la couleur du ciel lors d'une belle journée?",
+      "language": "fr",
+      "options": ["bleu", "vert", "rouge", "jaune"],
+      "answer": "bleu",
+      "difficulty": 1
+    },
+    {
+      "question_id": "q_fr_4",
+      "type": "mcq",
+      "text": "Quel est le contraire du mot 'grand'?",
+      "language": "fr",
+      "options": ["petit", "long", "haut", "épais"],
+      "answer": "petit",
+      "difficulty": 1
+    },
+    {
+      "question_id": "q_fr_5",
+      "text": "Décrivez un jour important de votre vie en détail.",
+      "type": "open",
+      "language": "fr",
+      "difficulty": 3,
+      "expected_keywords": ["jour", "important", "moment", "souvenir"],
+      "rubric": {
+        "level": "B1",
+        "expected_min_words": 80,
+        "expected_keywords": ["jour", "important"],
+        "criteria_weights": {
+          "task_realisation": 0.25,
+          "coherence": 0.20,
+          "sociolinguistic": 0.15,
+          "lexicon": 0.20,
+          "morphosyntax": 0.20
+        }
+      },
+      "examples_answers": [
+        {
+          "text": "Le jour le plus important de ma vie était le jour de mon diplôme. J'ai été tellement heureux et fier. Mes parents étaient aussi très contents. C'était un moment que je n'oublierai jamais.",
+          "score": 0.80
+        },
+        {
+          "text": "Le jours important c'étaient quand j'ai eu mon diplôme. J'était très heureus et fierr. Mes parents sont venu et nous avons fait une fête. C'était des bons souvenirs",
+          "score": 0.55
+        }
+      ]
+    },
+    {
+      "question_id": "q_fr_6",
+      "type": "mcq",
+      "text": "Quel temps faut-il pour aller de Paris à Lyon en train?",
+      "language": "fr",
+      "options": ["1 heure", "2 heures", "3 heures", "5 heures"],
+      "answer": "2 heures",
+      "difficulty": 2
+    },
+    {
+      "question_id": "q_fr_7",
+      "text": "Expliquez comment vous préparez votre repas préféré.",
+      "type": "open",
+      "language": "fr",
+      "difficulty": 2,
+      "expected_keywords": ["preparer", "repas", "ingrédient", "cuisiner"],
+      "rubric": {
+        "level": "A2",
+        "expected_min_words": 60,
+        "expected_keywords": ["préparer", "repas"],
+        "criteria_weights": {
+          "task_realisation": 0.25,
+          "coherence": 0.20,
+          "sociolinguistic": 0.15,
+          "lexicon": 0.20,
+          "morphosyntax": 0.20
+        }
+      },
+      "examples_answers": [
+        {
+          "text": "Pour préparer mon repas préféré, je commence par réunir tous les ingrédients. Je fais cuire l'eau dans une casserole et j'ajoute les pâtes. Puis j'ajoute la sauce tomate et le fromage.",
+          "score": 0.72
+        },
+        {
+          "text": "Je prepere mon plat favori en mettant les ingridient dans une pot. J'ajoute eau et je fait cuire. C'es facile et tres bon. Mon famille aime beaucoup",
+          "score": 0.45
+        }
+      ]
+    },
+    {
+      "question_id": "q_fr_8",
+      "type": "mcq",
+      "text": "Quel est le plus grand cours d'eau en France?",
+      "language": "fr",
+      "options": ["La Loire", "La Seine", "La Garonne", "Le Rhin"],
+      "answer": "La Loire",
+      "difficulty": 2
+    },
+    {
+      "question_id": "q_fr_9",
+      "text": "Décrivez votre environnement de travail ou d'études idéal.",
+      "type": "open",
+      "language": "fr",
+      "difficulty": 3,
+      "expected_keywords": ["environnement", "idéal", "travail", "étude"],
+      "rubric": {
+        "level": "B1",
+        "expected_min_words": 75,
+        "expected_keywords": ["environnement", "idéal"],
+        "criteria_weights": {
+          "task_realisation": 0.25,
+          "coherence": 0.20,
+          "sociolinguistic": 0.15,
+          "lexicon": 0.20,
+          "morphosyntax": 0.20
+        }
+      },
+      "examples_answers": [
+        {
+          "text": "Mon environnement de travail idéal serait calme et bien organisé. J'aimerais avoir une grande fenêtre pour avoir de la lumière naturelle. Il faudrait aussi avoir un bon équipement informatique et une connexion Internet rapide.",
+          "score": 0.78
+        },
+        {
+          "text": "L'environement ideal c'est qand il y a beacoup de lumieres et pas trop de bruits. J'aimes bien les plantes et les couleur vivante. On peut travailler mieu si c'es joli",
+          "score": 0.52
+        }
+      ]
+    },
+    {
+      "question_id": "q_fr_10",
+      "type": "mcq",
+      "text": "En quelle année la Bastille a-t-elle été prise?",
+      "language": "fr",
+      "options": ["1789", "1799", "1802", "1815"],
+      "answer": "1789",
+      "difficulty": 2
+    },
+    {
+      "question_id": "q_fr_11",
+      "text": "Racontez une expérience de voyage mémorable.",
+      "type": "open",
+      "language": "fr",
+      "difficulty": 3,
+      "expected_keywords": ["voyage", "mémorable", "expérience", "découvrir"],
+      "rubric": {
+        "level": "B1",
+        "expected_min_words": 85,
+        "expected_keywords": ["voyage", "mémorable"],
+        "criteria_weights": {
+          "task_realisation": 0.25,
+          "coherence": 0.20,
+          "sociolinguistic": 0.15,
+          "lexicon": 0.20,
+          "morphosyntax": 0.20
+        }
+      },
+      "examples_answers": [
+        {
+          "text": "Mon voyage le plus mémorable a été quand je suis allé en Italie. J'ai découvert des paysages magnifiques et une culture riche. J'ai goûté la meilleure pizza de ma vie et j'ai visité le Colosseum. C'était vraiment une expérience inoubliable.",
+          "score": 0.81
+        },
+        {
+          "text": "J'ai voyagé en Espagne et c'étaient tres memorable. J'ai vus plein de choses interresante. Les gens était tres sympa et gentil. La nourriture c'étaient delicieuse et j'ai pris beaucoup de fotos",
+          "score": 0.58
+        }
+      ]
+    },
+    {
+      "question_id": "q_fr_12",
+      "type": "mcq",
+      "text": "Combien de côtés a un hexagone?",
+      "language": "fr",
+      "options": ["4", "5", "6", "8"],
+      "answer": "6",
+      "difficulty": 1
+    }
+  ],
+  "metadata": {
+    "source": "french_priority_corpus",
+    "version": "1.0.0",
+    "language": "fr",
+    "includes_errors": "true"
+  }
+}
