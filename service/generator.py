@@ -2,9 +2,12 @@
 Main generator module - orchestrates the synthetic exam generation and training process.
 """
 
+import json
 import time
 import sys
+from pathlib import Path
 from typing import Optional
+from datetime import datetime
 
 from config.config import (
     NUM_EXAMS_TO_GENERATE,
@@ -32,6 +35,15 @@ class SyntheticTrainingGenerator:
         
         self.exam_builder = get_or_create_exam_builder()
         self.trainer_client = get_or_create_trainer_client()
+        
+        # Setup output directory for generated exams
+        self.output_dir = Path(__file__).parent.parent / "output"
+        self.output_dir.mkdir(exist_ok=True)
+        self.exams_file = self.output_dir / "generated_exams.json"
+        
+        # Initialize exams file if it doesn't exist
+        if not self.exams_file.exists():
+            self._initialize_exams_file()
         
         self.generated_count = 0
         self.successful_count = 0
@@ -115,6 +127,9 @@ class SyntheticTrainingGenerator:
             
             self.generated_count += 1
             
+            # Save exam to JSON file
+            self._save_exam_to_json(exam)
+            
             # Send exam
             exam_id = exam.get("exam_id")
             logger.info(f"Generated exam {exam_id} in {generation_time:.2f}s ({current}/{total or '∞'})")
@@ -139,6 +154,41 @@ class SyntheticTrainingGenerator:
         import random
         return random.randint(5, 10)
     
+    def _initialize_exams_file(self):
+        """Initialize the JSON file for storing generated exams (simple array, no wrapper)."""
+        data = []
+        with open(self.exams_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        logger.info(f"Created exams file at {self.exams_file}")
+    
+    def _save_exam_to_json(self, exam: dict):
+        """Save generated exam to JSON file (array format, one exam per entry)."""
+        try:
+            with open(self.exams_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            
+            # Create exam entry in EXACT train_french_priority.json format
+            exam_entry = {
+                "train_id": exam.get("train_id"),
+                "examples": exam.get("examples", []),
+                "metadata": {
+                    "source": "synthetic_generator",
+                    "version": "1.0.0",
+                    "language": "fr",
+                    "includes_errors": "true"
+                }
+            }
+            
+            data.append(exam_entry)
+            
+            with open(self.exams_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"Exam {exam.get('exam_id')} saved to {self.exams_file} (total: {len(data)})")
+        
+        except Exception as e:
+            logger.error(f"Error saving exam to JSON: {e}")
+    
     def _print_summary(self):
         """Print generation summary."""
         logger.info("=" * 60)
@@ -146,6 +196,10 @@ class SyntheticTrainingGenerator:
         logger.info("=" * 60)
         logger.info(f"Total generated: {self.generated_count}")
         logger.info(f"Successfully sent: {self.successful_count}")
+        logger.info(f"Failed: {self.failed_count}")
+        success_rate = (self.successful_count / self.generated_count * 100) if self.generated_count > 0 else 0
+        logger.info(f"Success rate: {success_rate:.1f}%")
+        logger.info("=" * 60)
         logger.info(f"Failed: {self.failed_count}")
         
         if self.generated_count > 0:

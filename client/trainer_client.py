@@ -48,7 +48,7 @@ class TrainerClient:
         Send exam to training endpoint with retry logic.
         
         Args:
-            exam: Complete exam dictionary
+            exam: Complete exam dictionary (already in correct format)
             
         Returns:
             True if successful, False otherwise
@@ -138,6 +138,7 @@ class TrainerClient:
     def _make_request(self, exam: Dict[str, Any]) -> requests.Response:
         """
         Make HTTP POST request to training endpoint.
+        Sends train_id, examples, and metadata (train_french_priority.json format).
         
         Args:
             exam: Exam dictionary
@@ -150,9 +151,21 @@ class TrainerClient:
             "Accept": "application/json",
         }
         
+        # Send exam in EXACT train_french_priority.json format (3 required fields)
+        exam_to_send = {
+            "train_id": exam.get("train_id"),
+            "examples": exam.get("examples", []),
+            "metadata": {
+                "source": "synthetic_generator",
+                "version": "1.0.0",
+                "language": "fr",
+                "includes_errors": "true"
+            }
+        }
+        
         response = requests.post(
             self.api_url,
-            json=exam,
+            json=exam_to_send,
             headers=headers,
             timeout=self.timeout,
         )
@@ -161,25 +174,53 @@ class TrainerClient:
     
     def verify_connection(self) -> bool:
         """
-        Verify that API endpoint is reachable.
+        Verify that API endpoint is reachable by sending minimal valid POST.
         
         Returns:
             True if endpoint is reachable, False otherwise
         """
         try:
-            # Try to make a simple request to check connectivity
-            response = requests.head(
+            # Send minimal valid payload to verify connectivity
+            # Uses exact structure from train_french_priority.json
+            test_payload = {
+                "train_id": "test-connection",
+                "examples": [
+                    {
+                        "question_id": "test_q",
+                        "text": "Test question",
+                        "type": "mcq",
+                        "language": "fr",
+                        "difficulty": 1,
+                        "options": ["Option A", "Option B"],
+                        "answer": "Option A"
+                    }
+                ],
+                "metadata": {
+                    "source": "test",
+                    "version": "1.0.0",
+                    "language": "fr",
+                    "includes_errors": "false"
+                }
+            }
+            response = requests.post(
                 self.api_url,
+                json=test_payload,
                 timeout=5,
             )
-            logger.info(f"API connection verified (status: {response.status_code})")
-            return True
+            # Both 200 and 2xx mean connection is OK
+            if response.status_code in [200, 201]:
+                logger.info(f"API connection verified")
+                return True
+            else:
+                # Any error response still means server is reachable
+                logger.info(f"API connection verified")
+                return True
         except requests.exceptions.ConnectionError:
             logger.error(f"Cannot connect to API endpoint: {self.api_url}")
             return False
         except Exception as e:
             logger.warning(f"Error verifying API connection: {e}")
-            return True  # Assume connection OK for now
+            return True  # Assume connection OK - don't block on connectivity check
 
 
 # Singleton instance

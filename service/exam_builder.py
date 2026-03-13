@@ -64,14 +64,14 @@ class ExamBuilder:
         adaptive: bool = True,
     ) -> Dict[str, Any]:
         """
-        Generate a complete synthetic exam.
+        Generate a complete synthetic exam in train_french_priority.json format.
         
         Args:
             num_questions: Number of questions to include
             adaptive: Whether exam is adaptive (true in current schema)
             
         Returns:
-            Complete exam JSON structure
+            Complete exam JSON structure matching train_french_priority.json format
         """
         exam_id = self._generate_exam_id()
         candidate_id = self._generate_candidate_id()
@@ -79,28 +79,86 @@ class ExamBuilder:
         # Select random questions
         selected_questions = random.sample(self.questions, min(num_questions, len(self.questions)))
         
-        # Build questions and answers
-        questions_list = []
-        answers_list = []
+        # Build examples with integrated answers
+        examples_list = []
         
         for question_data in selected_questions:
-            question_obj = self._build_question(question_data)
-            questions_list.append(question_obj)
-            
-            answer_obj = self._build_answer(question_data, question_obj)
-            answers_list.append(answer_obj)
+            # Build enriched example with answers integrated
+            example_obj = self._build_example_with_answer(question_data)
+            examples_list.append(example_obj)
         
+        # Create exam in train_french_priority.json format
         exam = {
+            "train_id": f"train_{exam_id}",
             "exam_id": exam_id,
             "candidate_id": candidate_id,
             "adaptive": adaptive,
-            "questions": questions_list,
-            "answers": answers_list,
-            "examples": questions_list,
+            "examples": examples_list,
         }
         
-        logger.info(f"Generated exam {exam_id} with {len(questions_list)} questions")
+        logger.info(f"Generated exam {exam_id} with {len(examples_list)} questions")
         return exam
+    
+    def _build_example_with_answer(self, question_data: Dict) -> Dict[str, Any]:
+        """
+        Build example with integrated answer (examples_answers).
+        Matches train_french_priority.json format:
+        - Open questions: include examples_answers with student responses
+        - MCQ: NO examples_answers, just question and correct answer
+        """
+        example = {
+            "question_id": question_data.get("question_id"),
+            "text": question_data.get("text"),
+            "type": question_data.get("type"),  # "open" or "mcq"
+            "language": question_data.get("language"),
+            "difficulty": question_data.get("difficulty"),
+        }
+        
+        # Add expected_keywords if present
+        if "expected_keywords" in question_data:
+            example["expected_keywords"] = question_data["expected_keywords"]
+        
+        # Add rubric if present (for open questions)
+        if question_data.get("type") == "open" and "rubric" in question_data:
+            example["rubric"] = question_data["rubric"]
+        
+        # Add MCQ options if present
+        if question_data.get("type") == "mcq" and "options" in question_data:
+            example["options"] = question_data["options"]
+            # For MCQ, add the correct answer
+            if "answer" in question_data:
+                example["answer"] = question_data["answer"]
+        
+        # Only add examples_answers for OPEN questions, NOT for MCQ
+        if question_data.get("type") == "open":
+            # Generate exactly 2 student answers with varying quality (matching train_french_priority.json)
+            # train_french_priority.json sempre has 2 examples_answers per open question
+            min_words = question_data.get("rubric", {}).get("expected_min_words", 30)
+            max_words = question_data.get("rubric", {}).get("expected_min_words", 100) * 1.5
+            
+            examples_answers = []
+            
+            # Generate EXACTLY 2 different answers with varying quality
+            for answer_idx in range(2):
+                student_answer = self._generate_student_answer(question_data)
+                word_count = len(student_answer.split())
+                
+                # Score varies based on word count and some randomness
+                if min_words <= word_count <= max_words:
+                    score = random.uniform(0.65, 0.85)
+                else:
+                    score = random.uniform(0.40, 0.60)
+                
+                examples_answers.append({
+                    "text": student_answer,
+                    "score": round(score, 2)
+                })
+            
+            example["examples_answers"] = examples_answers
+        
+        # MCQ questions do NOT have examples_answers (no student responses needed)
+        
+        return example
     
     def _build_question(self, question_data: Dict) -> Dict[str, Any]:
         """Build individual question object."""
