@@ -73,6 +73,18 @@ LOG_FILE = "synthetic_training_generator.log"
 MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds
 
+# Cooldown between batches (seconds)
+# Applied after every completed batch cycle (generate → validate → send).
+# Set to 0 to disable. Configurable via BATCH_COOLDOWN_SEC env var.
+#
+# Math (Groq free tier llama-3.3-70b-versatile):
+#   TPM limit : 12,000 tokens/min
+#   Per call  : ~1,090 input + ~2,200 output = ~3,300 tokens
+#   Safe rate : 12,000 / 3,300 ≈ 3.6 calls/min → 1 call every ~16.7s
+#   LLM call  : ~6–8s  |  send /train: ~2s  → cycle ≈ 8–10s
+#   Cooldown  : 16.7s - 9s (avg cycle) ≈ 8s minimum → default 12s (safe margin)
+BATCH_COOLDOWN_SEC = int(os.getenv("BATCH_COOLDOWN_SEC", "12"))
+
 # CEFR Level Word Count Expectations
 CEFR_WORD_EXPECTATIONS = {
     "A1": {"min": 10, "max": 30},

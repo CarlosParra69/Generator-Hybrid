@@ -129,37 +129,19 @@ class TrainerClient:
 
     def verify_connection(self) -> bool:
         """
-        Verify API reachability by sending a minimal valid POST /train payload.
-        Uses single_choice (current type, not legacy mcq).
+        Verify API reachability via GET /health (no data sent to /train).
+
+        Falls back to the base URL if /health is not available.
 
         Returns:
-            True if endpoint responds (any HTTP status), False if unreachable.
+            True if endpoint responds, False if unreachable.
         """
-        test_payload = {
-            "train_id": "test-connection-check",
-            "examples": [
-                {
-                    "question_id": "q_test_001",
-                    "type": "single_choice",
-                    "text": "Quelle est la couleur du ciel?",
-                    "language": "fr",
-                    "difficulty": 1,
-                    "options": ["bleu", "vert", "rouge", "jaune"],
-                    "answer": "bleu",
-                }
-            ],
-            "metadata": {
-                "source": "connection_check",
-                "version": "3.0.0",
-                "language": "fr",
-                "includes_errors": "false",
-                "question_types": "single_choice",
-            },
-        }
+        base_url = self.api_url.rstrip("/").rsplit("/train", 1)[0]
+        health_url = f"{base_url}/health"
         try:
-            response = requests.post(self.api_url, json=test_payload, timeout=5)
+            response = requests.get(health_url, timeout=5)
             logger.info(
-                f"API connection verified — {self.api_url} responded with {response.status_code}"
+                f"API connection verified — {health_url} responded with {response.status_code}"
             )
             return True
         except requests.exceptions.ConnectionError:

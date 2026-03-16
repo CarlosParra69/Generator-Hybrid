@@ -14,6 +14,7 @@ logged so the operator can confirm the builder is aware of them.
 
 import json
 import random
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -101,6 +102,10 @@ class TrainBatchBuilder:
             f"examples: {num_questions}, distribution: {type_dist_str}"
         )
 
+        # Delay between batch-level retries (on top of the 429 handling inside llm_generator).
+        # Gives the TPM window more room to recover before a completely new generation attempt.
+        _RETRY_DELAY_SEC = 8
+
         for attempt in range(1, MAX_BATCH_RETRIES + 1):
             batch = self.llm.generate_training_batch(
                 topic=topic,
@@ -111,7 +116,12 @@ class TrainBatchBuilder:
             )
 
             if batch is None:
-                logger.warning(f"Batch {train_id}: LLM returned None (attempt {attempt}/{MAX_BATCH_RETRIES})")
+                logger.warning(
+                    f"Batch {train_id}: LLM returned None (attempt {attempt}/{MAX_BATCH_RETRIES})"
+                )
+                if attempt < MAX_BATCH_RETRIES:
+                    logger.info(f"Waiting {_RETRY_DELAY_SEC}s before next batch attempt...")
+                    time.sleep(_RETRY_DELAY_SEC)
                 continue
 
             is_valid, errors = validate_training_batch(batch)
@@ -127,6 +137,9 @@ class TrainBatchBuilder:
                 f"Batch {train_id} validation failed (attempt {attempt}/{MAX_BATCH_RETRIES}): "
                 f"{errors[:5]}"
             )
+            if attempt < MAX_BATCH_RETRIES:
+                logger.info(f"Waiting {_RETRY_DELAY_SEC}s before re-generating...")
+                time.sleep(_RETRY_DELAY_SEC)
 
         logger.error(f"Batch {train_id}: could not generate valid batch after {MAX_BATCH_RETRIES} attempts")
         return None

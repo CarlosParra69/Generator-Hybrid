@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from config.config import INFINITE_MODE, NUM_EXAMS_TO_GENERATE, EXAMPLES_PER_BATCH, validate_config
+from config.config import INFINITE_MODE, NUM_EXAMS_TO_GENERATE, EXAMPLES_PER_BATCH, BATCH_COOLDOWN_SEC, validate_config
 from service.exam_builder import get_or_create_exam_builder
 from service.logger import logger
 from client.trainer_client import get_or_create_trainer_client
@@ -91,6 +91,8 @@ class SyntheticTrainingGenerator:
         logger.info(f"Running generator for {num_batches} batches")
         for i in range(num_batches):
             self._generate_and_send_batch(i + 1, num_batches)
+            if i < num_batches - 1:
+                self._cooldown()
         self._print_summary()
 
     def _run_infinite_loop(self):
@@ -101,6 +103,25 @@ class SyntheticTrainingGenerator:
             self._generate_and_send_batch(iteration, None)
             if iteration % 100 == 0:
                 self._print_summary()
+            self._cooldown()
+
+    # ------------------------------------------------------------------ #
+    # Cooldown                                                              #
+    # ------------------------------------------------------------------ #
+
+    def _cooldown(self):
+        """
+        Wait BATCH_COOLDOWN_SEC seconds between batches.
+
+        Prevents rate-limiting on the Groq API and avoids saturating /train.
+        The full cycle (generate → validate → send) completes before the
+        cooldown starts, so each batch is always processed to completion.
+        Skipped if BATCH_COOLDOWN_SEC == 0.
+        """
+        if BATCH_COOLDOWN_SEC <= 0:
+            return
+        logger.info(f"Cooldown — waiting {BATCH_COOLDOWN_SEC}s before next batch...")
+        time.sleep(BATCH_COOLDOWN_SEC)
 
     # ------------------------------------------------------------------ #
     # Core: generate one batch and send it                                  #

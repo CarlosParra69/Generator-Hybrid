@@ -10,6 +10,7 @@ Two modes of operation:
 
 import json
 import re
+import time
 from typing import Any, Dict, Optional
 
 import requests
@@ -32,6 +33,11 @@ class GroqProvider:
     # Primary: full training batch generation                              #
     # ------------------------------------------------------------------ #
 
+    # Maximum internal retries for 429 rate-limit responses before giving up
+    _GROQ_RATE_LIMIT_MAX_RETRIES = 4
+    # Extra buffer added on top of Groq's own "retry after" suggestion (seconds)
+    _GROQ_RATE_LIMIT_BUFFER_SEC = 2.0
+
     def generate_training_batch(
         self,
         topic: str,
@@ -43,49 +49,94 @@ class GroqProvider:
         """
         Ask Groq to generate a complete /train JSON batch.
 
-        Uses the master prompt defined in promt_generator.md §2 and the
-        rules in rules_generator.md.
+        Handles 429 rate-limit responses automatically:
+        - Parses the "retry after Xs" hint from Groq's error message.
+        - Waits that exact time + _GROQ_RATE_LIMIT_BUFFER_SEC before retrying.
+        - Retries up to _GROQ_RATE_LIMIT_MAX_RETRIES times before giving up.
 
         Returns:
             Parsed JSON dict, or None if generation or parsing fails.
         """
         prompt = self._build_batch_prompt(topic, level, num_examples, type_distribution, train_id)
 
-        try:
-            response = requests.post(
-                f"{self.base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self.model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.75,
-                    "max_tokens": 4096,
-                },
-                timeout=90,
-            )
-            response.raise_for_status()
-            result = response.json()
+        for attempt in range(1, self._GROQ_RATE_LIMIT_MAX_RETRIES + 1):
+            try:
+                response = requests.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self.model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.75,
+                        "max_tokens": 4096,
+                    },
+                    timeout=90,
+                )
 
-            if "choices" not in result or not result["choices"]:
-                logger.warning("No choices in Groq response for batch generation")
+                # Handle 429 before raise_for_status so we can parse the body
+                if response.status_code == 429:
+                    retry_after = self._extract_retry_after(response) + self._GROQ_RATE_LIMIT_BUFFER_SEC
+                    if attempt < self._GROQ_RATE_LIMIT_MAX_RETRIES:
+                        logger.warning(
+                            f"Groq rate limit 429 (attempt {attempt}/{self._GROQ_RATE_LIMIT_MAX_RETRIES}) "
+                            f"— waiting {retry_after:.1f}s before retry"
+                        )
+                        time.sleep(retry_after)
+                        continue
+                    else:
+                        logger.error(
+                            f"Groq rate limit 429 — max retries ({self._GROQ_RATE_LIMIT_MAX_RETRIES}) exhausted"
+                        )
+                        return None
+
+                response.raise_for_status()
+                result = response.json()
+
+                if "choices" not in result or not result["choices"]:
+                    logger.warning("No choices in Groq response for batch generation")
+                    return None
+
+                content = result["choices"][0]["message"]["content"].strip()
+                return self._parse_json_response(content)
+
+            except requests.exceptions.HTTPError as e:
+                try:
+                    error_detail = response.json()
+                    log_error(f"Groq API HTTP error ({response.status_code}): {error_detail}", error=e)
+                except Exception:
+                    log_error(f"Groq API HTTP error: {e}", error=e)
+                return None
+            except requests.exceptions.RequestException as e:
+                log_error(f"Groq API request error: {e}", error=e)
                 return None
 
-            content = result["choices"][0]["message"]["content"].strip()
-            return self._parse_json_response(content)
+        return None
 
-        except requests.exceptions.HTTPError as e:
-            try:
-                error_detail = response.json()
-                log_error(f"Groq API HTTP error ({response.status_code}): {error_detail}", error=e)
-            except Exception:
-                log_error(f"Groq API HTTP error: {e}", error=e)
-            return None
-        except requests.exceptions.RequestException as e:
-            log_error(f"Groq API request error: {e}", error=e)
-            return None
+    def _extract_retry_after(self, response: requests.Response) -> float:
+        """
+        Parse the 'retry after' duration from a Groq 429 response body.
+
+        Groq returns messages like:
+          "Please try again in 1.91s."
+          "Please try again in 915ms."
+
+        Returns seconds as float, defaults to 5.0 if parsing fails.
+        """
+        try:
+            data = response.json()
+            msg = data.get("error", {}).get("message", "")
+            match_s = re.search(r"try again in ([\d.]+)s", msg)
+            if match_s:
+                return float(match_s.group(1))
+            match_ms = re.search(r"try again in ([\d.]+)ms", msg)
+            if match_ms:
+                return float(match_ms.group(1)) / 1000.0
+        except Exception:
+            pass
+        return 5.0
 
     def _build_batch_prompt(
         self,
