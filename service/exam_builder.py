@@ -152,20 +152,23 @@ class TrainBatchBuilder:
     def _build_type_distribution(total: int) -> Dict[str, int]:
         """
         Build per-type example counts following rules_generator.md §5.
-            writing_text / speaking_record : 30–45 %
-            single_choice                  : 20–30 %
-            fill_blank                     : 15–30 %
+            writing_text / speaking_record : 22–35 %
+            single_choice                  : 18–28 %
+            fill_blank                     : 13–22 %
+            image                          :  8–15 %
             ordering                       : remainder (10–20 %)
         """
-        writing  = max(1, round(total * random.uniform(0.25, 0.40)))
-        single   = max(1, round(total * random.uniform(0.20, 0.30)))
-        fill     = max(1, round(total * random.uniform(0.15, 0.25)))
-        ordering = max(1, total - writing - single - fill)
+        writing  = max(1, round(total * random.uniform(0.22, 0.35)))
+        single   = max(1, round(total * random.uniform(0.18, 0.28)))
+        fill     = max(1, round(total * random.uniform(0.13, 0.22)))
+        image    = max(1, round(total * random.uniform(0.08, 0.15)))
+        ordering = max(1, total - writing - single - fill - image)
 
         return {
             "writing_text": writing,
             "single_choice": single,
             "fill_blank": fill,
+            "image": image,
             "ordering": ordering,
         }
 

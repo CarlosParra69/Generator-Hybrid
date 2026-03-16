@@ -11,6 +11,7 @@ VALID_TYPES = {
     "fill_blank",
     "ordering",
     "speaking_record",
+    "image",
     # legacy — accepted but not recommended for new data
     "mcq",
     "open",
@@ -28,6 +29,7 @@ REQUIRED_FIELDS_BY_TYPE: Dict[str, List[str]] = {
     "fill_blank":      ["question_id", "type", "text", "language", "difficulty", "accepted_answers"],
     "ordering":        ["question_id", "type", "text", "language", "difficulty", "elements", "correct_order"],
     "speaking_record": ["question_id", "type", "text", "language", "difficulty", "rubric", "examples_answers"],
+    "image":           ["question_id", "type", "text", "language", "difficulty", "image_description"],
 }
 
 
@@ -117,9 +119,36 @@ def _validate_example(example: Any, idx: int) -> List[str]:
         if len(elements) < 4:
             errors.append(f"{prefix}: ordering requires at least 4 elements")
 
+    if q_type == "image":
+        image_desc = example.get("image_description")
+        if not image_desc or not str(image_desc).strip():
+            errors.append(f"{prefix}: image_description must not be empty for type 'image'")
+
+        options = example.get("options")
+        answer = example.get("answer")
+        has_choice_mode = options is not None or answer is not None
+        has_descriptive_mode = example.get("rubric") is not None
+
+        if not has_choice_mode and not has_descriptive_mode:
+            errors.append(
+                f"{prefix}: image type requires either (options + answer) for choice-based "
+                "or (rubric) for descriptive evaluation"
+            )
+
+        if has_choice_mode:
+            if not isinstance(options, list) or len(options) < 3:
+                errors.append(f"{prefix}: image choice-based requires at least 3 options")
+            if answer and options and answer not in options:
+                errors.append(f"{prefix}: answer '{answer}' not found in options")
+
     for j, ea in enumerate(example.get("examples_answers", [])):
         if not isinstance(ea, dict):
             continue
+        if "text" not in ea:
+            errors.append(
+                f"{prefix}.examples_answers[{j}]: missing required field 'text' "
+                "(backend expects 'text', not 'answer')"
+            )
         score = ea.get("score")
         if score is not None and not (0.0 <= float(score) <= 1.0):
             errors.append(f"{prefix}.examples_answers[{j}]: score {score} not in [0, 1]")

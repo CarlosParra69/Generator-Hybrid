@@ -3,7 +3,7 @@ Trainer client — sends generated /train batches to the backend endpoint.
 Handles retries, error handling and API communication.
 """
 
-import json
+import copy
 import time
 from typing import Any, Dict, Optional
 
@@ -159,12 +159,13 @@ class TrainerClient:
         """
         POST the batch to /train.
 
-        Sends the full batch (train_id + examples + metadata) exactly as
-        generated — metadata is already populated by TrainBatchBuilder/LLM.
+        Sends the full batch (train_id + examples + metadata). Normalizes
+        examples_answers: backend requires "text", so "answer" is copied to "text" if missing.
         """
+        examples = self._normalize_examples(batch.get("examples", []))
         payload = {
             "train_id": batch.get("train_id"),
-            "examples": batch.get("examples", []),
+            "examples": examples,
             "metadata": batch.get("metadata", {
                 "source": "synthetic_generator_llm",
                 "version": "3.0.0",
@@ -180,6 +181,27 @@ class TrainerClient:
             headers={"Content-Type": "application/json", "Accept": "application/json"},
             timeout=self.timeout,
         )
+
+    @staticmethod
+    def _normalize_examples(examples: list) -> list:
+        """
+        Ensure examples_answers items have 'text' (backend requirement).
+        If an item has 'answer' but no 'text', copy answer -> text.
+        Returns a deep copy so the original batch is not mutated.
+        """
+        out = copy.deepcopy(examples)
+        for ex in out:
+            if not isinstance(ex, dict):
+                continue
+            answers = ex.get("examples_answers")
+            if not isinstance(answers, list):
+                continue
+            for item in answers:
+                if not isinstance(item, dict):
+                    continue
+                if "text" not in item and "answer" in item:
+                    item["text"] = item["answer"]
+        return out
 
 
 # Singleton instance

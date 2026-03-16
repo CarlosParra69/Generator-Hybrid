@@ -11,7 +11,7 @@ TRAINER_API_TIMEOUT = int(os.getenv("TRAINER_API_TIMEOUT", "30"))
 
 # LLM Configuration — Groq (Free API)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 # Generation Configuration
 NUM_EXAMS_TO_GENERATE = int(os.getenv("NUM_EXAMS_TO_GENERATE", "10"))

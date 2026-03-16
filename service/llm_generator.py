@@ -179,6 +179,7 @@ TIPOS PERMITIDOS (usar solo estos)
 - fill_blank
 - ordering
 - speaking_record
+- image
 
 NO INCLUIR: audio, video.
 
@@ -214,8 +215,24 @@ REGLAS POR TIPO
    Campos obligatorios: question_id, type, text, language, difficulty, rubric, examples_answers
    - Misma logica de rubric y examples_answers que writing_text.
 
+6) image
+   Campos obligatorios: question_id, type, text, language, difficulty, image_description
+   - image_description: descripcion textual clara de la imagen mostrada al candidato (minimo 10 palabras).
+     Ejemplo: "Une femme travaille sur un ordinateur dans un cafe."
+   - Elige UNA de estas dos variantes:
+     a) VARIANTE OPCION MULTIPLE (recomendada): incluir tambien options y answer.
+        Mismas reglas que single_choice (minimo 3 opciones, answer dentro de options).
+        Usar cuando la imagen permite elegir entre alternativas concretas.
+     b) VARIANTE DESCRIPTIVA: incluir tambien rubric y examples_answers.
+        Mismas reglas de rubric y examples_answers que writing_text.
+        Usar cuando se pide describir o interpretar la imagen libremente.
+   - No incluir ambas variantes en el mismo ejemplo: elige solo una.
+
 VARIACION DE RESPUESTAS ABIERTAS (OBLIGATORIA para writing_text y speaking_record)
-Generar EXACTAMENTE 3 respuestas en examples_answers:
+Generar EXACTAMENTE 3 respuestas en examples_answers. Cada elemento es un objeto con DOS campos OBLIGATORIOS:
+- "text": string con la respuesta del estudiante (NO usar "answer"; el backend exige "text").
+- "score": numero entre 0 y 1.
+
 - 1 respuesta ALTA (score entre 0.80 y 0.95):
     buena coherencia, vocabulario rico, pocos o ningun error.
 - 1 respuesta MEDIA (score entre 0.50 y 0.70):
