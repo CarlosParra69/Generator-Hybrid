@@ -1,292 +1,178 @@
 """
-Exam builder module for constructing complete synthetic exams.
-Reads questions from training data and generates corresponding student answers.
+Train batch builder — orchestrates complete /train JSON generation via Groq LLM.
+
+Pipeline (promt_generator.md §4):
+  1. Pick random topic, level and type distribution for the batch.
+  2. Build dynamic master prompt and call Groq.
+  3. Validate generated JSON against schema (rules_generator.md §7).
+  4. If validation fails, retry up to MAX_BATCH_RETRIES times.
+  5. Return the validated batch ready to send to POST /train.
+
+Sample files in sample/ are loaded on startup as format reference and
+logged so the operator can confirm the builder is aware of them.
 """
 
 import json
 import random
 import uuid
-from typing import Dict, List, Any, Optional
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from config.config import (
-    TRAINING_DATA_FILE,
-    CEFR_WORD_EXPECTATIONS,
-    MCQ_CORRECT_PROBABILITY,
-    OPEN_QUESTION_TIME_MIN,
-    OPEN_QUESTION_TIME_MAX,
-    MCQ_TIME_MIN,
-    MCQ_TIME_MAX,
+    BATCH_LEVELS,
+    BATCH_TOPICS,
+    EXAMPLES_PER_BATCH,
+    MAX_RETRIES,
+    SAMPLE_DIR,
+    SAMPLE_FILES,
 )
 from service.llm_generator import get_or_create_llm
-from service.error_injector import get_or_create_error_injector
 from service.logger import logger
+from service.train_validator import validate_training_batch
+
+MAX_BATCH_RETRIES = MAX_RETRIES
 
 
-class ExamBuilder:
-    """Builds complete synthetic exam JSON structures."""
-    
-    def __init__(self, training_data_path: str = TRAINING_DATA_FILE):
-        """
-        Initialize exam builder.
-        
-        Args:
-            training_data_path: Path to training data JSON file
-        """
-        self.training_data = self._load_training_data(training_data_path)
-        self.questions = self.training_data.get("examples", [])
+class TrainBatchBuilder:
+    """
+    Generates complete training JSON batches via LLM following
+    the architecture defined in promt_generator.md and rules_generator.md.
+    """
+
+    def __init__(self):
         self.llm = get_or_create_llm()
-        self.error_injector = get_or_create_error_injector()
-        
-        logger.info(f"Loaded {len(self.questions)} questions from training data")
-    
-    def _load_training_data(self, path: str) -> Dict:
-        """Load training data from JSON file."""
-        try:
-            if not Path(path).exists():
-                raise FileNotFoundError(f"Training data file not found: {path}")
-            
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            
-            logger.info(f"Loaded training data from {path}")
-            return data
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in training data: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Error loading training data: {e}")
-            raise
-    
+        self._load_sample_files()
+
+    # ------------------------------------------------------------------ #
+    # Initialisation                                                        #
+    # ------------------------------------------------------------------ #
+
+    def _load_sample_files(self) -> None:
+        """Load sample JSON files as format reference (logged, not used in prompt to save tokens)."""
+        sample_dir = Path(SAMPLE_DIR)
+        loaded: List[str] = []
+
+        for fname in SAMPLE_FILES:
+            path = sample_dir / fname
+            if path.exists():
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    examples_count = len(data.get("examples", []))
+                    loaded.append(f"{fname} ({examples_count} examples)")
+                except Exception as e:
+                    logger.warning(f"Could not load sample file '{fname}': {e}")
+            else:
+                logger.warning(f"Sample file not found: {path}")
+
+        if loaded:
+            logger.info(f"TrainBatchBuilder — reference samples loaded: {', '.join(loaded)}")
+        else:
+            logger.warning("TrainBatchBuilder — no sample files found in sample/")
+
+    # ------------------------------------------------------------------ #
+    # Public API                                                            #
+    # ------------------------------------------------------------------ #
+
     def generate_exam(
         self,
-        num_questions: int = 5,
-        adaptive: bool = True,
-    ) -> Dict[str, Any]:
+        num_questions: int = EXAMPLES_PER_BATCH,
+        adaptive: bool = True,  # kept for compatibility with generator.py
+    ) -> Optional[Dict[str, Any]]:
         """
-        Generate a complete synthetic exam in train_french_priority.json format.
-        
+        Generate one complete /train batch via Groq LLM with validation.
+
         Args:
-            num_questions: Number of questions to include
-            adaptive: Whether exam is adaptive (true in current schema)
-            
+            num_questions: Target number of examples in the batch.
+            adaptive: Ignored (kept for interface compatibility).
+
         Returns:
-            Complete exam JSON structure matching train_french_priority.json format
+            Validated batch dict, or None if all retries failed.
         """
-        exam_id = self._generate_exam_id()
-        candidate_id = self._generate_candidate_id()
-        
-        # Select random questions
-        selected_questions = random.sample(self.questions, min(num_questions, len(self.questions)))
-        
-        # Build examples with integrated answers
-        examples_list = []
-        
-        for question_data in selected_questions:
-            # Build enriched example with answers integrated
-            example_obj = self._build_example_with_answer(question_data)
-            examples_list.append(example_obj)
-        
-        # Create exam in train_french_priority.json format
-        exam = {
-            "train_id": f"train_{exam_id}",
-            "exam_id": exam_id,
-            "candidate_id": candidate_id,
-            "adaptive": adaptive,
-            "examples": examples_list,
-        }
-        
-        logger.info(f"Generated exam {exam_id} with {len(examples_list)} questions")
-        return exam
-    
-    def _build_example_with_answer(self, question_data: Dict) -> Dict[str, Any]:
-        """
-        Build example with integrated answer (examples_answers).
-        Matches train_french_priority.json format:
-        - Open questions: include examples_answers with student responses
-        - MCQ: NO examples_answers, just question and correct answer
-        """
-        example = {
-            "question_id": question_data.get("question_id"),
-            "text": question_data.get("text"),
-            "type": question_data.get("type"),  # "open" or "mcq"
-            "language": question_data.get("language"),
-            "difficulty": question_data.get("difficulty"),
-        }
-        
-        # Add expected_keywords if present
-        if "expected_keywords" in question_data:
-            example["expected_keywords"] = question_data["expected_keywords"]
-        
-        # Add rubric if present (for open questions)
-        if question_data.get("type") == "open" and "rubric" in question_data:
-            example["rubric"] = question_data["rubric"]
-        
-        # Add MCQ options if present
-        if question_data.get("type") == "mcq" and "options" in question_data:
-            example["options"] = question_data["options"]
-            # For MCQ, add the correct answer
-            if "answer" in question_data:
-                example["answer"] = question_data["answer"]
-        
-        # Only add examples_answers for OPEN questions, NOT for MCQ
-        if question_data.get("type") == "open":
-            # Generate exactly 2 student answers with varying quality (matching train_french_priority.json)
-            # train_french_priority.json sempre has 2 examples_answers per open question
-            min_words = question_data.get("rubric", {}).get("expected_min_words", 30)
-            max_words = question_data.get("rubric", {}).get("expected_min_words", 100) * 1.5
-            
-            examples_answers = []
-            
-            # Generate EXACTLY 2 different answers with varying quality
-            for answer_idx in range(2):
-                student_answer = self._generate_student_answer(question_data)
-                word_count = len(student_answer.split())
-                
-                # Score varies based on word count and some randomness
-                if min_words <= word_count <= max_words:
-                    score = random.uniform(0.65, 0.85)
-                else:
-                    score = random.uniform(0.40, 0.60)
-                
-                examples_answers.append({
-                    "text": student_answer,
-                    "score": round(score, 2)
-                })
-            
-            example["examples_answers"] = examples_answers
-        
-        # MCQ questions do NOT have examples_answers (no student responses needed)
-        
-        return example
-    
-    def _build_question(self, question_data: Dict) -> Dict[str, Any]:
-        """Build individual question object."""
-        question = {
-            "question_id": question_data.get("question_id"),
-            "text": question_data.get("text"),
-            "type": question_data.get("type"),  # "open" or "mcq"
-            "language": question_data.get("language"),
-            "difficulty": question_data.get("difficulty"),
-        }
-        
-        # Add MCQ options if present
-        if question_data.get("type") == "mcq" and "options" in question_data:
-            question["options"] = question_data["options"]
-        
-        # Add rubric if present (for open questions)
-        if question_data.get("type") == "open" and "rubric" in question_data:
-            question["rubric"] = question_data["rubric"]
-        
-        return question
-    
-    def _build_answer(self, question_data: Dict, question_obj: Dict) -> Dict[str, Any]:
-        """Build corresponding answer object."""
-        question_id = question_data.get("question_id")
-        question_type = question_data.get("type")
-        
-        answer = {
-            "question_id": question_id,
-            "time_spent_sec": self._generate_time_spent(question_type),
-        }
-        
-        if question_type == "open":
-            # Generate student answer using LLM
-            student_answer = self._generate_student_answer(question_data)
-            answer["student_answer"] = student_answer
-        
-        elif question_type == "mcq":
-            # Simulate MCQ response
-            correct_answer = question_data.get("answer")
-            options = question_data.get("options", [])
-            
-            if random.random() < MCQ_CORRECT_PROBABILITY:
-                answer["selected_option"] = correct_answer
-                answer["is_correct"] = True
-            else:
-                wrong_options = [o for o in options if o != correct_answer]
-                answer["selected_option"] = random.choice(wrong_options) if wrong_options else correct_answer
-                answer["is_correct"] = False
-        
-        return answer
-    
-    def _generate_student_answer(self, question_data: Dict) -> str:
-        """Generate a student answer using LLM and apply error injection."""
-        question_text = question_data.get("text", "")
-        rubric = question_data.get("rubric", {})
-        cefr_level = rubric.get("level", "A1")
-        expected_keywords = question_data.get("expected_keywords", rubric.get("expected_keywords", []))
-        expected_min_words = rubric.get("expected_min_words", CEFR_WORD_EXPECTATIONS.get(cefr_level, {}).get("min", 30))
-        expected_max_words = rubric.get("expected_min_words", CEFR_WORD_EXPECTATIONS.get(cefr_level, {}).get("max", 100))
-        difficulty = question_data.get("difficulty", 1)
-        
-        try:
-            # Generate answer using LLM
-            answer = self.llm.generate_answer(
-                question=question_text,
-                cefr_level=cefr_level,
-                difficulty=difficulty,
-                expected_keywords=expected_keywords,
-                expected_min_words=expected_min_words,
-                expected_max_words=expected_max_words,
+        topic = random.choice(BATCH_TOPICS)
+        level = random.choice(BATCH_LEVELS)
+        train_id = self._make_train_id()
+        type_dist = self._build_type_distribution(num_questions)
+        type_dist_str = ", ".join(f"{t}: {n}" for t, n in type_dist.items())
+
+        logger.info(
+            f"Generating batch {train_id} — topic: '{topic}', level: {level}, "
+            f"examples: {num_questions}, distribution: {type_dist_str}"
+        )
+
+        for attempt in range(1, MAX_BATCH_RETRIES + 1):
+            batch = self.llm.generate_training_batch(
+                topic=topic,
+                level=level,
+                num_examples=num_questions,
+                type_distribution=type_dist_str,
+                train_id=train_id,
             )
-            
-            # Inject errors
-            answer = self.error_injector.inject_errors(answer)
-            
-            # Adjust word count
-            target_words = (expected_min_words + expected_max_words) // 2
-            answer = self.error_injector.vary_word_count(answer, target_words, tolerance=10)
-            
-            return answer
-        
-        except Exception as e:
-            logger.warning(f"Error generating answer for question {question_data.get('question_id')}: {e}")
-            # Return fallback answer
-            return self._get_fallback_answer(cefr_level)
-    
-    def _get_fallback_answer(self, cefr_level: str) -> str:
-        """Get a fallback answer if LLM generation fails."""
-        fallback_answers = {
-            "A1": "C'est bien aujourd'hui. J'ai travaillé.",
-            "A2": "Aujourd'hui j'ai eu une bonne journée. J'ai travaillé et j'ai appris beaucoup de choses nouvelles.",
-            "B1": "Aujourd'hui a été une journée intéressante. J'ai travaillé sur plusieurs projets importants et j'ai collaboré avec mes collègues.",
-            "B2": "Aujourd'hui a été une journée très productive et enrichissante. J'ai eu l'occasion de travailler sur des tâches significatives et d'interagir avec mon équipe.",
-            "C1": "Aujourd'hui a représenté une journée particulièrement fructueuse du point de vue professionnel. J'ai pu accomplir diverses tâches complexes et contribuer efficacement aux objectifs collectifs.",
-        }
-        
-        return fallback_answers.get(cefr_level, fallback_answers["B1"])
-    
-    def _generate_time_spent(self, question_type: str) -> int:
-        """Generate realistic time spent on question."""
-        if question_type == "open":
-            return random.randint(
-                OPEN_QUESTION_TIME_MIN,
-                OPEN_QUESTION_TIME_MAX
+
+            if batch is None:
+                logger.warning(f"Batch {train_id}: LLM returned None (attempt {attempt}/{MAX_BATCH_RETRIES})")
+                continue
+
+            is_valid, errors = validate_training_batch(batch)
+
+            if is_valid:
+                actual_count = len(batch.get("examples", []))
+                logger.info(
+                    f"Batch {train_id} validated OK — {actual_count} examples generated"
+                )
+                return batch
+
+            logger.warning(
+                f"Batch {train_id} validation failed (attempt {attempt}/{MAX_BATCH_RETRIES}): "
+                f"{errors[:5]}"
             )
-        else:  # mcq
-            return random.randint(
-                MCQ_TIME_MIN,
-                MCQ_TIME_MAX
-            )
-    
+
+        logger.error(f"Batch {train_id}: could not generate valid batch after {MAX_BATCH_RETRIES} attempts")
+        return None
+
+    # ------------------------------------------------------------------ #
+    # Helpers                                                               #
+    # ------------------------------------------------------------------ #
+
     @staticmethod
-    def _generate_exam_id() -> str:
-        """Generate unique exam ID."""
-        return f"exam_{uuid.uuid4().hex[:12]}"
-    
+    def _build_type_distribution(total: int) -> Dict[str, int]:
+        """
+        Build per-type example counts following rules_generator.md §5.
+            writing_text / speaking_record : 30–45 %
+            single_choice                  : 20–30 %
+            fill_blank                     : 15–30 %
+            ordering                       : remainder (10–20 %)
+        """
+        writing  = max(1, round(total * random.uniform(0.25, 0.40)))
+        single   = max(1, round(total * random.uniform(0.20, 0.30)))
+        fill     = max(1, round(total * random.uniform(0.15, 0.25)))
+        ordering = max(1, total - writing - single - fill)
+
+        return {
+            "writing_text": writing,
+            "single_choice": single,
+            "fill_blank": fill,
+            "ordering": ordering,
+        }
+
     @staticmethod
-    def _generate_candidate_id() -> str:
-        """Generate synthetic candidate ID."""
-        return f"candidate_{random.randint(1000, 999999)}"
+    def _make_train_id() -> str:
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        suffix = uuid.uuid4().hex[:6]
+        return f"t{date_str}-fr-llm-{suffix}"
 
 
-# Singleton instance
-_exam_builder: Optional[ExamBuilder] = None
+# ------------------------------------------------------------------ #
+# Singleton                                                            #
+# ------------------------------------------------------------------ #
 
-def get_or_create_exam_builder() -> ExamBuilder:
-    """Get or create the exam builder singleton."""
+_exam_builder: Optional[TrainBatchBuilder] = None
+
+
+def get_or_create_exam_builder() -> TrainBatchBuilder:
+    """Get or create the TrainBatchBuilder singleton."""
     global _exam_builder
     if _exam_builder is None:
-        _exam_builder = ExamBuilder()
+        _exam_builder = TrainBatchBuilder()
     return _exam_builder

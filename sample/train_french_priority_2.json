@@ -1,0 +1,92 @@
+{
+  "train_id": "t2026-03-16-french-priority-etre",
+  "examples": [
+    {
+      "question_id": "q_fr_19",
+      "type": "fill_blank",
+      "text": "Je ___ très content aujourd'hui.",
+      "language": "fr",
+      "accepted_answers": ["suis"],
+      "difficulty": 1
+    },
+    {
+      "question_id": "q_fr_20",
+      "type": "fill_blank",
+      "text": "Tu ___ en retard pour le cours.",
+      "language": "fr",
+      "accepted_answers": ["es"],
+      "difficulty": 1
+    },
+    {
+      "question_id": "q_fr_21",
+      "type": "fill_blank",
+      "text": "Il ___ malade depuis deux jours.",
+      "language": "fr",
+      "accepted_answers": ["est"],
+      "difficulty": 1
+    },
+    {
+      "question_id": "q_fr_22",
+      "type": "fill_blank",
+      "text": "Nous ___ très fatigués après le voyage.",
+      "language": "fr",
+      "accepted_answers": ["sommes"],
+      "difficulty": 2
+    },
+    {
+      "question_id": "q_fr_23",
+      "type": "fill_blank",
+      "text": "Vous ___ prêts pour l'examen de français.",
+      "language": "fr",
+      "accepted_answers": ["êtes", "etes"],
+      "difficulty": 2
+    },
+    {
+      "question_id": "q_fr_24",
+      "type": "fill_blank",
+      "text": "Elles ___ toujours en avance au travail.",
+      "language": "fr",
+      "accepted_answers": ["sont"],
+      "difficulty": 2
+    },
+    {
+      "question_id": "q_fr_25",
+      "type": "fill_blank",
+      "text": "Hier je ___ allé au cinéma avec mes amis.",
+      "language": "fr",
+      "accepted_answers": ["suis"],
+      "difficulty": 2
+    },
+    {
+      "question_id": "q_fr_26",
+      "type": "fill_blank",
+      "text": "Nous ___ arrivés très tard à la maison.",
+      "language": "fr",
+      "accepted_answers": ["sommes"],
+      "difficulty": 2
+    },
+    {
+      "question_id": "q_fr_27",
+      "type": "fill_blank",
+      "text": "Ils ___ partis en vacances la semaine dernière.",
+      "language": "fr",
+      "accepted_answers": ["sont"],
+      "difficulty": 2
+    },
+    {
+      "question_id": "q_fr_28",
+      "type": "fill_blank",
+      "text": "Ma sœur ___ née en 2005.",
+      "language": "fr",
+      "accepted_answers": ["est"],
+      "difficulty": 2
+    }
+  ],
+  "metadata": {
+    "source": "french_priority_corpus_etre",
+    "version": "2.0.0",
+    "language": "fr",
+    "includes_errors": "false",
+    "question_types": "fill_blank"
+  }
+}

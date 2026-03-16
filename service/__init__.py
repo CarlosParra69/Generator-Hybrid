@@ -1,24 +1,22 @@
 """
-Synthetic French Exam Generator - Training Data Generator for Language Models
+Synthetic French Exam Generator — Training Data Generator for Language Models
 
-A hybrid synthetic exam generator that automatically generates thousands of training examples 
-for French language evaluation models using Groq API.
+Hybrid generator (Python + Groq LLM) that produces complete /train JSON batches
+for French language evaluation models following the DELF schema.
 
-Version: 1.0.0
+Version: 2.0.0
 Author: ML Engineering Team
 Date: March 2026
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "ML Engineering Team"
 
-# Import main components for easy access
 try:
     from .logger import logger
     from config.config import validate_config
-    from .exam_builder import ExamBuilder
-    from .trainer_client import TrainerClient
+    from .exam_builder import TrainBatchBuilder
     from .generator import SyntheticTrainingGenerator
+    from .train_validator import validate_training_batch
 except ImportError:
-    # Allow relative imports to fail when package not properly initialized
     pass

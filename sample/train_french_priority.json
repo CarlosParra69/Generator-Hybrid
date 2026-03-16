@@ -1,10 +1,11 @@
 {
-  "train_id": "t2026-03-12-french-priority",
+  "train_id": "t2026-03-16-french-priority",
   "examples": [
+
     {
       "question_id": "q_fr_1",
       "text": "Écrivez un message court sur votre journée.",
-      "type": "open",
+      "type": "writing_text",
       "language": "fr",
       "difficulty": 1,
       "expected_keywords": ["aujourd'hui", "bien", "travail", "matin"],
@@ -31,10 +32,11 @@
         }
       ]
     },
+
     {
       "question_id": "q_fr_2",
       "text": "Parlez de vos loisirs préférés et pourquoi vous les aimez.",
-      "type": "open",
+      "type": "writing_text",
       "language": "fr",
       "difficulty": 2,
       "expected_keywords": ["loisir", "aimer", "parce que", "activité"],
@@ -61,28 +63,31 @@
         }
       ]
     },
+
     {
       "question_id": "q_fr_3",
-      "type": "mcq",
+      "type": "single_choice",
       "text": "Quelle est la couleur du ciel lors d'une belle journée?",
       "language": "fr",
       "options": ["bleu", "vert", "rouge", "jaune"],
       "answer": "bleu",
       "difficulty": 1
     },
+
     {
       "question_id": "q_fr_4",
-      "type": "mcq",
+      "type": "single_choice",
       "text": "Quel est le contraire du mot 'grand'?",
       "language": "fr",
       "options": ["petit", "long", "haut", "épais"],
       "answer": "petit",
       "difficulty": 1
     },
+
     {
       "question_id": "q_fr_5",
       "text": "Décrivez un jour important de votre vie en détail.",
-      "type": "open",
+      "type": "writing_text",
       "language": "fr",
       "difficulty": 3,
       "expected_keywords": ["jour", "important", "moment", "souvenir"],
@@ -109,19 +114,21 @@
         }
       ]
     },
+
     {
       "question_id": "q_fr_6",
-      "type": "mcq",
-      "text": "Quel temps faut-il pour aller de Paris à Lyon en train?",
+      "type": "single_choice",
+      "text": "Quel temps faut-il pour aller de Paris à Lyon en TGV?",
       "language": "fr",
       "options": ["1 heure", "2 heures", "3 heures", "5 heures"],
       "answer": "2 heures",
       "difficulty": 2
     },
+
     {
       "question_id": "q_fr_7",
       "text": "Expliquez comment vous préparez votre repas préféré.",
-      "type": "open",
+      "type": "writing_text",
       "language": "fr",
       "difficulty": 2,
       "expected_keywords": ["preparer", "repas", "ingrédient", "cuisiner"],
@@ -148,19 +155,21 @@
         }
       ]
     },
+
     {
       "question_id": "q_fr_8",
-      "type": "mcq",
-      "text": "Quel est le plus grand cours d'eau en France?",
+      "type": "single_choice",
+      "text": "Quel est le plus grand fleuve en France?",
       "language": "fr",
       "options": ["La Loire", "La Seine", "La Garonne", "Le Rhin"],
       "answer": "La Loire",
       "difficulty": 2
     },
+
     {
       "question_id": "q_fr_9",
       "text": "Décrivez votre environnement de travail ou d'études idéal.",
-      "type": "open",
+      "type": "writing_text",
       "language": "fr",
       "difficulty": 3,
       "expected_keywords": ["environnement", "idéal", "travail", "étude"],
@@ -187,19 +196,21 @@
         }
       ]
     },
+
     {
       "question_id": "q_fr_10",
-      "type": "mcq",
-      "text": "En quelle année la Bastille a-t-elle été prise?",
+      "type": "single_choice",
+      "text": "En quelle année a eu lieu la Révolution française?",
       "language": "fr",
       "options": ["1789", "1799", "1802", "1815"],
       "answer": "1789",
       "difficulty": 2
     },
+
     {
       "question_id": "q_fr_11",
       "text": "Racontez une expérience de voyage mémorable.",
-      "type": "open",
+      "type": "writing_text",
       "language": "fr",
       "difficulty": 3,
       "expected_keywords": ["voyage", "mémorable", "expérience", "découvrir"],
@@ -226,20 +237,122 @@
         }
       ]
     },
+
     {
       "question_id": "q_fr_12",
-      "type": "mcq",
+      "type": "single_choice",
       "text": "Combien de côtés a un hexagone?",
       "language": "fr",
       "options": ["4", "5", "6", "8"],
       "answer": "6",
       "difficulty": 1
+    },
+
+    {
+      "question_id": "q_fr_13",
+      "type": "fill_blank",
+      "text": "Nous ___ allés au marché hier matin.",
+      "language": "fr",
+      "accepted_answers": ["sommes"],
+      "difficulty": 2
+    },
+
+    {
+      "question_id": "q_fr_14",
+      "type": "fill_blank",
+      "text": "Mon chat dort toujours ___ le canapé.",
+      "language": "fr",
+      "accepted_answers": ["sur", "dans", "sous"],
+      "difficulty": 1
+    },
+
+    {
+      "question_id": "q_fr_15",
+      "type": "fill_blank",
+      "text": "Elle a ___ un excellent résultat à son examen de français.",
+      "language": "fr",
+      "accepted_answers": ["obtenu", "eu", "reçu"],
+      "difficulty": 2
+    },
+
+    {
+      "question_id": "q_fr_16",
+      "type": "ordering",
+      "text": "Remettez ces étapes dans l'ordre correct pour préparer des pâtes.",
+      "language": "fr",
+      "elements": [
+        "Égoutter les pâtes.",
+        "Faire bouillir l'eau.",
+        "Servir dans une assiette.",
+        "Saler l'eau.",
+        "Ajouter les pâtes."
+      ],
+      "correct_order": [
+        "Faire bouillir l'eau.",
+        "Saler l'eau.",
+        "Ajouter les pâtes.",
+        "Égoutter les pâtes.",
+        "Servir dans une assiette."
+      ],
+      "difficulty": 2
+    },
+
+    {
+      "question_id": "q_fr_17",
+      "type": "ordering",
+      "text": "Remettez ces moments de la journée dans l'ordre chronologique.",
+      "language": "fr",
+      "elements": [
+        "Le dîner",
+        "Le petit-déjeuner",
+        "Le déjeuner",
+        "Le goûter"
+      ],
+      "correct_order": [
+        "Le petit-déjeuner",
+        "Le déjeuner",
+        "Le goûter",
+        "Le dîner"
+      ],
+      "difficulty": 1
+    },
+
+    {
+      "question_id": "q_fr_18",
+      "type": "speaking_record",
+      "text": "Présentez-vous en quelques phrases : votre prénom, votre âge, votre profession et un loisir que vous aimez.",
+      "language": "fr",
+      "difficulty": 2,
+      "rubric": {
+        "level": "A2",
+        "expected_min_words": 30,
+        "expected_keywords": ["je m'appelle", "j'ai", "ans", "je suis", "j'aime"],
+        "criteria_weights": {
+          "task_realisation": 0.35,
+          "coherence": 0.20,
+          "sociolinguistic": 0.15,
+          "lexicon": 0.15,
+          "morphosyntax": 0.15
+        }
+      },
+      "examples_answers": [
+        {
+          "text": "Bonjour, je m'appelle Thomas. J'ai trente ans et je suis ingénieur. J'habite à Paris depuis cinq ans. Dans mes temps libres, j'aime jouer au tennis et lire des romans.",
+          "score": 0.88
+        },
+        {
+          "text": "Bonjour je suis María. J'ai vingt ans. Je suis etudiante. J'aimes le sport et la musique.",
+          "score": 0.55
+        }
+      ]
     }
+
   ],
   "metadata": {
     "source": "french_priority_corpus",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "language": "fr",
-    "includes_errors": "true"
+    "includes_errors": "true",
+    "question_types": "writing_text, single_choice, fill_blank, ordering, speaking_record"
   }
 }
